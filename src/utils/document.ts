@@ -107,7 +107,11 @@ export const onGenerateRG = (masked: boolean): string => {
 
   d1 = 11 - mod(d1, 11)
   if (d1 === 10) d1 = 'X'
-  if (d1 >= 10) d1 = 0
+  if (typeof d1 === 'number') {
+    if (d1 >= 10) {
+      d1 = 0
+    }
+  }
 
   if (masked) {
     return `${n1}${n2}.${n3}${n4}${n5}.${n6}${n7}${n8}-${d1}`

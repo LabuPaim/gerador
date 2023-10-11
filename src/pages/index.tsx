@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useState, useRef } from 'react'
 import type { NextPage } from 'next'
 import Head from 'next/head'
-import { Heading, HStack, VStack } from '@chakra-ui/react'
+import { Textarea, HStack, VStack } from '@chakra-ui/react'
 import { ArrowsClockwise, MaskHappy, MaskSad } from 'phosphor-react'
 
 import {
@@ -18,40 +18,61 @@ import ServicesButton from '@/components/services-button'
 import CopyButton from '@/components/copy-button'
 
 const Home: NextPage = () => {
-  const [documentType, setDocumentType] = React.useState(DocumentType.CPF)
-  const [document, setDocument] = React.useState('')
-  const [mask, setMask] = React.useState(true)
+  const [documentType, setDocumentType] = useState(DocumentType.CPF)
+  const [documents, setDocuments] = useState<string[]>([])
+  const [mask, setMask] = useState(true)
+  const [inputValue, setInputValue] = useState("1")
 
   React.useEffect(() => {
-    onGenerate(documentType)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    generateDocuments(documentType, inputValue)
+  }, [documentType, inputValue])
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
-  const onGenerate = (type: DocumentType) => {
+  React.useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.value = documents.join('\n')
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+    }
+  }, [documents])
+
+  const generateDocuments = (type: DocumentType, inputValue: string) => {
     setDocumentType(type)
-    let doc = ''
+    setInputValue(inputValue)
+    const generatedDocuments: string[] = []
 
-    if (type === DocumentType.CPF) {
-      doc = onGenerateCPF(mask)
-    } else if (type === DocumentType.CNPJ) {
-      doc = onGenerateCNPJ(mask)
-    } else if (type === DocumentType.RG) {
-      doc = onGenerateRG(mask)
+    for (let i = 0; i < parseInt(inputValue); i++) {
+      let doc = ''
+
+      if (type === DocumentType.CPF) {
+        doc = onGenerateCPF(mask)
+      } else if (type === DocumentType.CNPJ) {
+        doc = onGenerateCNPJ(mask)
+      } else if (type === DocumentType.RG) {
+        doc = onGenerateRG(mask)
+      }
+
+      generatedDocuments.push(doc)
     }
 
-    setDocument(doc)
+    setDocuments(generatedDocuments)
   }
 
   const onToggleMask = (mask: boolean) => {
     setMask(mask)
 
     if (mask) {
-      setDocument((document) => {
-        return onSetMask(document, documentType)
+      setDocuments((docs) => {
+        return docs.map((doc) => onSetMask(doc, documentType))
       })
     } else {
-      setDocument((document) => document.replace(/[^\d]/g, ''))
+      setDocuments((docs) => {
+        return docs.map((doc) => doc.replace(/[^\d]/g, ''))
+      })
     }
+  }
+  const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDocuments(event.target.value.split('\n'))
   }
 
   return (
@@ -64,14 +85,30 @@ const Home: NextPage = () => {
         />
       </Head>
 
-      <VStack alignItems="center" justifyContent="center" flex="1" spacing="10">
-        <ServicesButton documentType={documentType} onGenerate={onGenerate} />
+      <VStack
+        style={{ alignItems: 'center', justifyContent: 'center' }}
+        flex="1"
+        spacing="10"
+      >
+        <ServicesButton
+          documentType={documentType}
+          onGenerate={generateDocuments}
+        />
 
-        <Heading as="h2">{document}</Heading>
+        <Textarea
+          ref={textareaRef}
+          size="sm"
+          resize={'none'}
+          // style={{ width: '20%', overflow: "hidden", border: "none"}}
+          // style={{ width: '45%', overflow: "hidden", border: "none"}}
+          style={{ width: '45%', overflow: "hidden"}}
+          onChange={handleChange}
+        />
 
         <HStack>
-          <CopyButton text={document} />
+          <CopyButton text={documents.join('\n')} />
           <AppButton
+            style={mask ? { backgroundColor: '#FBD38D', color: 'black' } : {}}
             motionKey={mask ? 'mask-happy' : 'mask-sad'}
             tooltip={mask ? 'Sem máscara' : 'Com máscara'}
             aria-label="Toggle Máscara"
@@ -79,11 +116,11 @@ const Home: NextPage = () => {
             onClick={() => onToggleMask(!mask)}
           />
           <AppButton
-            motionKey={document}
+            motionKey={documents.join('\n')}
             tooltip="Gerar novo documento"
             aria-label="Re:Gerar"
             icon={<AppIcon icon={ArrowsClockwise} />}
-            onClick={() => onGenerate(documentType)}
+            onClick={() => generateDocuments(documentType, inputValue)}
           />
         </HStack>
       </VStack>
